@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Dashboard de Vendas e Estoque</h1>
+
+    <div class="row">
+        <!-- Gráfico de Vendas Mensais -->
+        <div class="col-lg-8 mb-4">
+            <div class="card bg-dark h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Vendas Mensais (R$)</h5>
+                    <select id="year-select" class="form-select form-select-sm bg-dark text-white float-end" style="width: 100px;">
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Estoque Atual -->
+        <div class="col-lg-4 mb-4">
+            <div class="card bg-dark h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Situação do Estoque</h5>
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEÇÃO DE KPIs -->
+    <div class="row mt-4">
+        <!-- KPI de Produtos Parados -->
+        <div class="col-lg-6 mb-4">
+            <div class="card bg-dark">
+                <div class="card-header fw-bold"><i class="bi bi-moon-stars-fill text-info me-2"></i>Produtos Parados (Sem Vendas há 90+ dias)</div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    {% if produtos_parados %}
+                        <ul class="list-group list-group-flush">
+                        {% for produto in produtos_parados %}
+                            <li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center">
+                                <span>{{ produto.nome }}</span>
+                                <div>
+                                    <span class="badge bg-secondary rounded-pill me-2">Estoque: {{ produto.estoque.quantidade_produto }}</span>
+                                    <a href="{{ url_for('criar_promocao', id_produto=produto.id_produto) }}" class="btn btn-sm btn-info">Criar Promoção</a>
+                                </div>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-white-50 text-center pt-3">Nenhum produto parado encontrado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- GRÁFICO DE VENDAS ---
+        const yearSelect = document.getElementById('year-select');
+        const salesCtx = document.getElementById('salesChart').getContext('2d');
+        const salesChart = new Chart(salesCtx, { type: 'bar', data: { labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [{ label: 'Vendas (R$)', data: [], backgroundColor: 'rgba(0, 123, 255, 0.7)' }] } });
+        async function fetchSalesData(year) {
+            const response = await fetch(`/api/relatorios/vendas/por_mes?ano=${year}`);
+            const data = await response.json();
+            salesChart.data.datasets[0].data = data.mensal;
+            salesChart.update();
+        }
+        yearSelect.addEventListener('change', (e) => fetchSalesData(e.target.value));
+        fetchSalesData(yearSelect.value);
+
+        // --- GRÁFICO DE ESTOQUE ---
+        const stockCtx = document.getElementById('stockChart').getContext('2d');
+        const stockChart = new Chart(stockCtx, { type: 'doughnut', data: { labels: [], datasets: [{ label: 'Quantidade em Estoque', data: [], backgroundColor: ['rgba(0, 123, 255, 0.8)', 'rgba(255, 193, 7, 0.8)', 'rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)', 'rgba(23, 162, 184, 0.8)', 'rgba(108, 117, 125, 0.8)'] }] } });
+        async function fetchStockData() {
+            const response = await fetch('/api/relatorios/estoque_atual');
+            const data = await response.json();
+            stockChart.data.labels = data.labels;
+            stockChart.data.datasets[0].data = data.data;
+            stockChart.update();
+        }
+        fetchStockData();
+    });
+    </script>
+{% endblock %}

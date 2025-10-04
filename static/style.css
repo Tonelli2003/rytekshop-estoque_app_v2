@@ -1,0 +1,34 @@
+/* Arquivo: static/style.css */
+
+/* Estilo geral para o corpo das páginas de formulário */
+.form-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+/* Card de Login Personalizado */
+.login-card {
+    width: 24rem;
+    border: 1px solid #0d6efd; /* Borda azul do Bootstrap */
+    box-shadow: 0 0 25px rgba(13, 110, 253, 0.2); /* Sombra/brilho azul */
+}
+
+/* Ajustes para o grupo de input com ícone */
+.input-group-text {
+    background-color: #343a40; /* Cor de fundo para o ícone */
+    border-color: #495057;
+}
+
+/* Inputs do formulário */
+.form-control, .form-control:focus {
+    background-color: #343a40;
+    border-color: #495057;
+    color: #fff;
+}
+
+/* Remove o brilho padrão do input ao focar, para manter nosso estilo */
+.form-control:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}

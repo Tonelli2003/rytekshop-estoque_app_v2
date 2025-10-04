@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Mensagens Enviadas{% endblock %}
+{% block content %}
+    <h1 class="h2 mb-3">Mensagens Enviadas e Registros</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div class="card bg-dark">
+        <div class="card-body">
+            <table class="table table-dark table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Fornecedor</th>
+                        <th>Status/Tipo</th>
+                        <th>Conteúdo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for msg in mensagens %}
+                    <tr>
+                        <td class="text-nowrap">{{ msg.data_envio.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ msg.fornecedor.nome if msg.fornecedor else 'N/A' }}</td>
+                        <td>
+                            {% if msg.status == 'LOG do Sistema' %}
+                                <span class="badge bg-info text-dark">{{ msg.status }}</span>
+                            {% else %}
+                                <span class="badge bg-primary">{{ msg.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ msg.conteudo }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-white-50">Nenhuma mensagem encontrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

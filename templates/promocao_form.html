@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Promoção{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Criar/Editar Promoção</h1>
+
+    <div class="card bg-dark">
+        <div class="card-body">
+            <h5 class="card-title">Produto: <span class="text-primary">{{ produto.nome }}</span></h5>
+            <p class="card-text text-white-50">Preço Original: R$ {{ "%.2f"|format(produto.preco) }}</p>
+
+            <form method="POST" action="{{ url_for('criar_promocao', id_produto=produto.id_produto) }}">
+                <div class="row align-items-end">
+                    <div class="col-md-4 mb-3">
+                        <label for="preco_promocional" class="form-label">Novo Preço Promocional (R$)</label>
+                        
+                        <!-- CORREÇÃO APLICADA AQUI: Convertemos o preço para float antes de multiplicar -->
+                        {% set suggested_price = (produto.preco|float * 0.85)|round(2) %}
+                        
+                        <input type="number" step="0.01" class="form-control" id="preco_promocional" name="preco_promocional" 
+                               value="{{ produto.preco_promocional if produto.preco_promocional else suggested_price }}"
+                               placeholder="Deixe em branco para remover">
+                        <div class="form-text">Preço sugerido (15% de desconto): R$ {{ "%.2f"|format(suggested_price) }}</div>
+                    </div>
+                </div>
+
+                <hr>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Salvar Promoção</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

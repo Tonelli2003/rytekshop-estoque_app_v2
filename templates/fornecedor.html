@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Contatar Fornecedor{% endblock %}
+{% block content %}
+  <h2>Contatar fornecedor: {{ produto.fornecedor.nome if produto.fornecedor else 'N/A' }}</h2>
+  <p>Produto: <strong>{{ produto.nome }}</strong></p>
+  <form method="post">
+    <label>Mensagem para fornecedor<br><textarea name="conteudo" rows="6" required>Olá, precisamos repor o produto {{ produto.nome }}. Estoque atual: {{ produto.estoque.quantidade if produto.estoque else 0 }}. Favor informar prazo e preço.</textarea></label><br>
+    <button type="submit">Enviar (gravar no sistema)</button>
+  </form>
+{% endblock %}

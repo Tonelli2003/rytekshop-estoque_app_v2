@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Histórico de Vendas{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h2">Histórico de Vendas</h1>
+        <div>
+            {% if session.get('cargo') == 'GERENTE' %}
+            <a href="{{ url_for('exportar_vendas') }}" class="btn btn-success me-2">
+                <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar para Excel
+            </a>
+            {% endif %}
+            <a href="{{ url_for('nova_venda') }}" class="btn btn-primary">
+                <i class="bi bi-cart-plus-fill me-1"></i> Registrar Nova Venda
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card bg-dark">
+        <div class="card-body">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID da Venda</th>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th class="text-center">Nº de Itens</th>
+                        <th class="text-end">Valor Total</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venda in vendas %}
+                    <tr>
+                        <td>#{{ venda.id_venda }}</td>
+                        <td>{{ venda.cliente.nome }}</td>
+                        <td>{{ venda.data_compra.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-center">{{ venda.itens|length }}</td>
+                        <td class="text-end">R$ {{ "%.2f"|format(venda.valor_total) }}</td>
+                        
+                        {# --- CÓDIGO ATUALIZADO AQUI --- #}
+                        <td class="text-end">
+                            <a href="{{ url_for('venda_detalhes', id_venda=venda.id_venda) }}" class="btn btn-sm btn-outline-primary me-2">
+                                Detalhes
+                            </a>
+                            <a href="{{ url_for('recibo_venda', id_venda=venda.id_venda) }}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-receipt-cutoff"></i> Recibo
+                            </a>
+                        </td>
+
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-white-50">Nenhuma venda registrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

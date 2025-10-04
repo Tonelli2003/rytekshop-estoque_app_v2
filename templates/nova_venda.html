@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Registrar Nova Venda{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Registrar Nova Venda</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card bg-dark">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('nova_venda') }}">
+                <h5 class="mb-3">Itens da Venda</h5>
+                <div id="itens-container">
+                    </div>
+                <button type="button" id="add-item-btn" class="btn btn-secondary mt-2">
+                    <i class="bi bi-plus-lg"></i> Adicionar Item
+                </button>
+                <hr>
+                <a href="{{ url_for('estoque') }}" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-success">Finalizar Venda</button>
+            </form>
+        </div>
+    </div>
+
+    <template id="item-template">
+        <div class="row item-row mb-2">
+            <div class="col-md-7">
+                <select class="form-select" name="produto_id[]" required>
+                    <option value="">-- Selecione um produto (Estoque disponível) --</option>
+                    {% for p in produtos %}
+                    <option value="{{ p.id_produto }}">{{ p.nome }} ({{ p.estoque.quantidade_produto }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="number" class="form-control" name="quantidade[]" placeholder="Quantidade" min="1" required>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-danger w-100 remove-item-btn">Remover</button>
+            </div>
+        </div>
+    </template>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const addItemBtn = document.getElementById('add-item-btn');
+    const itemsContainer = document.getElementById('itens-container');
+    const itemTemplate = document.getElementById('item-template');
+
+    function addNewItem() {
+        const newItemRow = itemTemplate.content.cloneNode(true);
+        itemsContainer.appendChild(newItemRow);
+    }
+
+    addItemBtn.addEventListener('click', addNewItem);
+
+    itemsContainer.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('remove-item-btn')) {
+            e.target.closest('.item-row').remove();
+        }
+    });
+
+    addNewItem(); // Adiciona a primeira linha ao carregar
+});
+</script>
+{% endblock %}

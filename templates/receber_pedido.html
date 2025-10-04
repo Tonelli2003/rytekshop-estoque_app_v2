@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Receber Pedido #{{ pedido.id_pedido }}{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Receber Pedido <span class="text-white-50">#{{ pedido.id_pedido }}</span></h1>
+    <div class="card bg-dark">
+        <div class="card-header">
+            <strong>Fornecedor:</strong> {{ pedido.fornecedor.nome }} <br>
+            <strong>Data do Pedido:</strong> {{ pedido.data_pedido.strftime('%d/%m/%Y') }}
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('receber_pedido', id_pedido=pedido.id_pedido) }}">
+                <p class="text-white-50">Confirme ou ajuste a quantidade recebida para cada item abaixo. Ao salvar, os valores serão somados ao estoque atual.</p>
+                <table class="table table-dark">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="text-center">Quantidade Pedida</th>
+                            <th class="text-center" style="width: 200px;">Quantidade Recebida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in pedido.itens %}
+                        <tr>
+                            <td>{{ item.produto.nome }}</td>
+                            <td class="text-center">{{ item.quantidade_pedida }}</td>
+                            <td>
+                                <input type="number" class="form-control bg-dark-subtle text-white text-center" 
+                                       name="qty_{{ item.id_produto }}" 
+                                       value="{{ item.quantidade_pedida }}" 
+                                       min="0" required>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <hr>
+                <a href="{{ url_for('pedidos') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-success">Confirmar Recebimento e Atualizar Estoque</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Produtos em Estoque{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h2">Produtos</h1>
+        <form class="d-flex w-50" method="GET" action="{{ url_for('estoque') }}">
+            <input class="form-control me-2 bg-dark text-white" type="search" name="q" placeholder="Buscar produto por nome..." value="{{ search_query or '' }}">
+            <button class="btn btn-outline-primary" type="submit">Buscar</button>
+        </form>
+        {% if cargo == 'GERENTE' %}
+        <div>
+            <a href="{{ url_for('exportar_produtos') }}" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar
+            </a>
+            <a href="{{ url_for('novo_produto') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle-fill me-1"></i> Adicionar
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card bg-dark mb-4 border-warning">
+        <div class="card-header fw-bold text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Alerta de Estoque Baixo (5 ou menos)</div>
+        <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+            {% if produtos_estoque_baixo %}
+                <ul class="list-group list-group-flush">
+                {% for produto in produtos_estoque_baixo %}
+                    <li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>{{ produto.nome }}</span>
+                            <span class="badge bg-danger rounded-pill ms-2">Restam: {{ produto.estoque.quantidade_produto }}</span>
+                        </div>
+                        {% if cargo in ['GERENTE', 'VENDEDOR'] %}
+                        <a href="{{ url_for('contatar_fornecedor', id_produto=produto.id_produto) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-truck me-1"></i> Pedir Reposição
+                        </a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-white-50 text-center pt-3">Nenhum produto com estoque baixo.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if cargo in ['GERENTE', 'VENDEDOR'] %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        **Dica:** Dê um **duplo clique** na quantidade (QTD) de um produto para editá-la rapidamente.
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        {% for produto in produtos %}
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card bg-dark text-white h-100 {% if produto.estoque.quantidade_produto <= 5 %} border border-danger border-2 {% endif %}">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ produto.nome }}</h5>
+                    <p class="card-text text-white-50 small">{{ produto.descricao or 'Sem descrição' }}</p>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fs-5 text-primary"><strong>R$ {{ "%.2f"|format(produto.preco) }}</strong></span>
+                            
+                            {% set qty = produto.estoque.quantidade_produto %}
+                            {% set qty_class = 'bg-secondary' %}
+                            {% if cargo in ['GERENTE', 'VENDEDOR'] %}
+                                {% set qty_class = 'bg-success editable-qty' %}
+                            {% endif %}
+                            {% if qty <= 5 %}
+                                {% set qty_class = 'bg-danger editable-qty' %}
+                            {% elif qty <= 10 %}
+                                {% set qty_class = 'bg-warning text-dark editable-qty' %}
+                            {% endif %}
+                            <span class="badge rounded-pill {{ qty_class }}" data-product-id="{{ produto.id_produto }}">
+                                QTD: {{ qty }}
+                            </span>
+                        </div>
+                        {% if cargo in ['GERENTE', 'VENDEDOR'] %}
+                        <div class="d-grid mt-2">
+                             <a href="{{ url_for('editar_produto', id_produto=produto.id_produto) }}" class="btn btn-sm btn-outline-light">Editar Detalhes</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center text-white-50 mt-5">
+            {% if search_query %}
+                <h4>Nenhum produto encontrado para "{{ search_query }}"</h4>
+            {% else %}
+                <h4>Nenhum produto encontrado no estoque.</h4>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+{% if cargo in ['GERENTE', 'VENDEDOR'] %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.editable-qty').forEach(field => {
+        field.addEventListener('dblclick', () => {
+            if (field.querySelector('input')) return;
+            const currentText = field.innerText;
+            const currentQty = currentText.replace('QTD: ', '').trim();
+            field.innerHTML = '';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentQty;
+            input.className = 'form-control form-control-sm bg-dark text-white text-center';
+            input.style.width = '70px';
+            field.appendChild(input);
+            input.focus();
+            input.select();
+            const saveChange = async () => {
+                const newQty = input.value;
+                const productId = field.dataset.productId;
+                if (newQty === currentQty) {
+                    field.innerHTML = currentText;
+                    return;
+                }
+                try {
+                    const response = await fetch('/api/produto/update', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ id: productId, quantidade: newQty })
+                    });
+                    if (response.ok) {
+                        window.location.reload(); 
+                    } else {
+                        console.error('Erro ao atualizar');
+                        field.innerHTML = currentText;
+                    }
+                } catch (error) {
+                    console.error('Falha na comunicação:', error);
+                    field.innerHTML = currentText;
+                }
+            };
+            input.addEventListener('blur', saveChange);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') field.innerHTML = currentText;
+            });
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

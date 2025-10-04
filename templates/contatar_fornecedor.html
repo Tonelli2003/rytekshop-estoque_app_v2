@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Pedir Reposição{% endblock %}
+{% block content %}
+<h1 class="mb-4">Pedir Reposição</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="card bg-dark">
+    <div class="card-body">
+        <h5 class="card-title">Produto: <span class="text-primary">{{ produto.nome }}</span></h5>
+        <p class="card-text text-white-50">Fornecedor: {{ produto.fornecedor.nome }}</p>
+
+        <form method="POST" action="{{ url_for('contatar_fornecedor', id_produto=produto.id_produto) }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="quantidade" class="form-label">Quantidade a Pedir</label>
+                    <input type="number" class="form-control" id="quantidade" name="quantidade" min="1" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="mensagem" class="form-label">Mensagem Adicional (Opcional)</label>
+                <textarea class="form-control" id="mensagem" name="mensagem" rows="4" placeholder="Ex: Enviar com urgência."></textarea>
+            </div>
+
+            <a href="{{ url_for('estoque') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Criar Pedido de Compra</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

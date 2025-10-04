@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">{{ title }}</h1>
+
+    <div class="card bg-dark">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('editar_produto', id_produto=produto.id_produto) if produto else url_for('novo_produto') }}">
+                
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome do Produto</label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ produto.nome if produto else '' }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ produto.descricao if produto else '' }}</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="preco" class="form-label">Preço (R$)</label>
+                        <input type="number" step="0.01" class="form-control" id="preco" name="preco" value="{{ produto.preco if produto else '' }}" required>
+                    </div>
+                    {% if not produto %}
+                    <div class="col-md-6 mb-3">
+                        <label for="quantidade" class="form-label">Quantidade Inicial em Estoque</label>
+                        <input type="number" class="form-control" id="quantidade" name="quantidade" required>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <a href="{{ url_for('estoque') }}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Salvar Produto</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
