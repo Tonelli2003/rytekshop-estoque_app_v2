@@ -1,4 +1,11 @@
 RytekShop - Sistema de Gestão de Inventário
+Grupo 
+AUGUSTO OLIVEIRA CODO DE SOUSA – 562080
+FELIPE DE OLIVEIRA CABRAL – 561720
+GABRIEL TONELLI AVELINO DOS SANTOS – 564705
+SOFIA BUERIS NETTO DE SOUZA – 565818
+VINÍCIUS ADRIAN SIQUEIRA DE OLIVEIRA – 564962
+
 
 RytekShop é um sistema web completo para gestão de estoque, construído com Python e Flask. Ele oferece um fluxo de trabalho completo, desde o cadastro de produtos, passando pela compra de mercadorias, até o registro de vendas e a análise de dados através de um dashboard inteligente.
 

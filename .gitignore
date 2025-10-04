@@ -1,0 +1,20 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.[oa]
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Instance folder (onde seu banco de dados sqlite fica)
+/instance/
+
+# Dotenv file for environment variables
+.env
+*.env.local
+
+# Outros arquivos de configuração e sistema
+.DS_Store
