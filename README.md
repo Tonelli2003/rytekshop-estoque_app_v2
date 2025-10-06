@@ -1,129 +1,114 @@
-RytekShop - Sistema de Gestão de Inventário
-Grupo 
-AUGUSTO OLIVEIRA CODO DE SOUSA – 562080
-FELIPE DE OLIVEIRA CABRAL – 561720
-GABRIEL TONELLI AVELINO DOS SANTOS – 564705
-SOFIA BUERIS NETTO DE SOUZA – 565818
-VINÍCIUS ADRIAN SIQUEIRA DE OLIVEIRA – 564962
+# RytekShop - Sistema de Gestão de Estoque
 
+**Grupo:**
+* AUGUSTO OLIVEIRA CODO DE SOUSA – 562080
+* FELIPE DE OLIVEIRA CABRAL – 561720
+* GABRIEL TONELLI AVELINO DOS SANTOS – 564705
+* SOFIA BUERIS NETTO DE SOUZA – 565818
+* VINÍCIUS ADRIAN SIQUEIRA DE OLIVEIRA – 564962
+
+---
 
 RytekShop é um sistema web completo para gestão de estoque, construído com Python e Flask. Ele oferece um fluxo de trabalho completo, desde o cadastro de produtos, passando pela compra de mercadorias, até o registro de vendas e a análise de dados através de um dashboard inteligente.
 
-✨ Funcionalidades Principais
-Gestão de Acesso e Usuários
-Níveis de Permissão: Dois tipos de conta com acessos distintos:
+## ✨ Funcionalidades Principais
 
-Gerente: Acesso total a todas as funcionalidades do sistema.
+#### Gestão de Acesso e Usuários
+- **Níveis de Permissão:** Dois tipos de conta com acessos distintos:
+  - **Gerente:** Acesso total a todas as funcionalidades do sistema.
+  - **Vendedor:** Acesso focado na operação diária (vendas, consulta de estoque e pedidos).
+- **Cadastro de Contas:** Página pública para o registro de novas contas de Vendedor.
 
-Vendedor: Acesso focado na operação diária (vendas, gestão de estoque e pedidos).
+#### Dashboard Inteligente (Acesso de Gerente)
+- **Gráficos Visuais:** Gráfico de barras para vendas mensais (com seletor de ano) e gráfico de rosca para a distribuição do valor do estoque.
+- **KPIs Ativos:**
+  - **Alerta de Estoque Baixo:** Lista automática de produtos que atingiram o nível mínimo de estoque e precisam de reposição.
+  - **Produtos Parados:** Identifica itens que não são vendidos há mais de 90 dias, sugerindo a criação de promoções para movimentar o estoque.
+- **Promoções Inteligentes:** Crie promoções com preço sugerido diretamente a partir do painel de produtos parados.
 
-Cadastro de Contas: Página pública para o registro de novas contas de Vendedor.
+#### Gestão de Produtos e Estoque
+- **CRUD de Produtos:** Funções completas para Adicionar, Visualizar e Atualizar produtos.
+- **Busca Rápida:** Filtre e encontre produtos facilmente pelo nome.
+- **Edição Rápida de Estoque:** Altere a quantidade de um produto com um duplo clique na página de estoque, sem precisar recarregar a página.
+- **Alertas Visuais:** Produtos com estoque baixo são destacados visualmente para fácil identificação.
 
-Dashboard Inteligente (Acesso de Gerente)
-Gráficos Visuais: Gráfico de barras para vendas mensais (com seletor de ano) e gráfico de rosca para a situação atual do estoque.
+#### Fluxo de Compras (Pedidos a Fornecedores)
+- **Criação de Pedidos:** Crie pedidos de compra completos com múltiplos itens.
+- **Recebimento de Mercadorias:** Confirme a chegada de um pedido, ajuste as quantidades recebidas e atualize o estoque de todos os itens com um único clique.
+- **Log Automático:** Cada novo pedido gera um registro automático na página de "Mensagens".
 
-KPIs Ativos:
+#### Fluxo de Vendas
+- **Registro de Vendas:** Uma página dedicada para registrar vendas, selecionando produtos e quantidades.
+- **Baixa Automática de Estoque:** Ao finalizar uma venda, o sistema automaticamente subtrai os itens vendidos do estoque.
+- **Emissão de Recibo:** Gere um recibo simples e imprimível para cada venda realizada, acessível tanto após a venda quanto no histórico.
+- **Preços Dinâmicos:** O sistema aplica automaticamente os preços promocionais, se existirem.
 
-Alerta de Estoque Baixo: Lista automática de produtos que precisam de reposição.
+#### Relatórios e Auditoria
+- **Histórico de Vendas:** Liste todas as vendas, acesse os detalhes de cada transação e gere recibos a qualquer momento.
+- **Histórico de Movimentações:** Um log completo de todas as entradas, saídas e ajustes manuais de estoque, registrando qual usuário realizou a ação.
+- **Exportação para Excel:** Exporte relatórios completos de Produtos, Vendas e do Histórico de Movimentações para análise offline.
 
-Produtos Parados: Identifica itens que não são vendidos há mais de 90 dias, sugerindo a criação de promoções.
+## 🚀 Tecnologias Utilizadas
+- **Backend:** Python, Flask, SQLAlchemy
+- **Banco de Dados:** MySQL
+- **Frontend:** HTML, Bootstrap 5, Chart.js, CSS customizado
+- **Bibliotecas Python:** Pandas, XlsxWriter, python-dotenv, e outras listadas no `requirements.txt`.
 
-Promoções Inteligentes: Crie promoções diretamente a partir do painel de produtos parados, com sugestão de preço.
-
-Gestão de Produtos e Estoque
-CRUD de Produtos: Funções completas para Adicionar, Visualizar, Atualizar e Deletar produtos (acesso de Gerente e Vendedor para editar).
-
-Busca Rápida: Filtre e encontre produtos facilmente pelo nome.
-
-Edição Rápida de Estoque: Altere a quantidade de um produto com um duplo clique, sem precisar recarregar a página.
-
-Alertas Visuais: Produtos com estoque baixo ou crítico são destacados visualmente com cores e bordas para fácil identificação.
-
-Fluxo de Compras (Pedidos a Fornecedores)
-Criação de Pedidos: Crie pedidos de compra completos com múltiplos itens ou crie um pedido de reposição rápido diretamente do alerta de estoque baixo.
-
-Recebimento de Mercadorias: Confirme a chegada de um pedido, ajuste as quantidades recebidas e atualize o estoque de todos os itens com um único clique.
-
-Log Automático: Cada novo pedido gera um registro automático na página de "Mensagens".
-
-Fluxo de Vendas
-Registro de Vendas: Uma página dedicada para registrar vendas, selecionando produtos e quantidades.
-
-Baixa Automática de Estoque: Ao finalizar uma venda, o sistema automaticamente subtrai os itens vendidos do estoque.
-
-Emissão de Recibo: Gere um recibo simples e imprimível para cada venda realizada.
-
-Preços Dinâmicos: O sistema aplica automaticamente os preços promocionais, se existirem.
-
-Relatórios e Auditoria
-Histórico de Vendas: Liste todas as vendas e veja os detalhes de cada transação (produtos, quantidades, preços).
-
-Histórico de Movimentações: Um log completo de todas as entradas, saídas e ajustes manuais de estoque, registrando qual usuário realizou a ação.
-
-Exportação para Excel: Exporte relatórios completos de Produtos e do Histórico de Movimentações para análise offline.
-
-🚀 Tecnologias Utilizadas
-Backend: Python, Flask, SQLAlchemy
-
-Banco de Dados: MySQL
-
-Frontend: HTML, Bootstrap 5, Chart.js, CSS customizado
-
-Bibliotecas Python: Pandas (para exportação), XlsxWriter, e outras listadas no requirements.txt.
-
-🔧 Configuração e Instalação
+## 🔧 Configuração e Instalação
 Siga os passos abaixo para rodar o projeto localmente.
 
-1. Pré-requisitos
+#### 1. Pré-requisitos
+- Python 3.8 ou superior
+- Servidor MySQL instalado e rodando.
 
-Python 3.8 ou superior
+#### 2. Preparar o Ambiente
+Clone o repositório e configure o ambiente virtual.
 
-Servidor MySQL instalado e rodando.
+```bash
+# 1. Clone o repositório para o seu computador
+git clone [https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git](https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git)
+cd SEU_REPOSITORIO
 
-2. Preparar o Ambiente
-
-No terminal, na pasta do projeto:
-
-# 1. Crie e ative o ambiente virtual
+# 2. Crie e ative o ambiente virtual
 python -m venv venv
-.\venv\Scripts\Activate
+.\venv\Scripts\Activate  # No Windows
 
-# 2. Instale todas as dependências
+# 3. Instale todas as dependências
 pip install -r requirements.txt
-
 3. Configurar o Banco de Dados
+O projeto inclui um script SQL completo que cria a estrutura e popula o banco com dados de simulação.
 
-No seu cliente MySQL (Workbench, etc.), crie um banco de dados vazio:
+Abra seu cliente MySQL (Workbench, etc.).
 
-CREATE DATABASE rytekshop CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+Execute o arquivo script_rytekshop.sql na íntegra. Este comando irá criar o banco de dados RYTEKSHOP, todas as tabelas, e inserir mais de 200 registros para uma simulação robusta.
 
 4. Configurar Variáveis de Ambiente
-
 Na raiz do projeto, crie um arquivo chamado .env.
 
-Cole o conteúdo abaixo e substitua pela sua senha do MySQL.
+Cole o conteúdo abaixo e substitua sua_senha_aqui pela sua senha do MySQL.
 
-SECRET_KEY=uma-chave-secreta-qualquer
-DATABASE_URL=mysql+mysqlconnector://root:sua_senha_aqui@localhost/rytekshop
+Ini, TOML
 
-5. Executar o Setup Completo
+SECRET_KEY='uma-chave-secreta-bem-longa-e-aleatoria-123'
+DATABASE_URL='mysql+mysqlconnector://root:sua_senha_aqui@localhost/rytekshop'
+5. Corrigir as Senhas dos Usuários
+O script SQL insere usuários com senhas de exemplo. Para poder fazer login, execute o comando setup do Flask.
 
-No terminal (com o venv ativado), execute o comando único que prepara todo o sistema:
+Bash
 
-# Defina a aplicação Flask (no CMD do Windows)
+# Defina a aplicação Flask (só precisa fazer uma vez por terminal no CMD)
 set FLASK_APP=app.py
 
-# Rode o setup (pode demorar alguns segundos)
+# Rode o setup para criptografar as senhas dos usuários 'admin' e 'seller'
 flask setup
-
-Este comando irá criar todas as tabelas, inserir os usuários padrão, importar os produtos do estoque.json e simular as vendas para os gráficos.
+Este comando irá encontrar os usuários no banco e atualizar suas senhas para 'admin' e 'seller', respectivamente.
 
 6. Iniciar o Servidor
-
 Agora é só ligar a aplicação:
 
-flask run
+Bash
 
+flask run
 O sistema estará acessível em http://127.0.0.1:5000.
 
 ใช้งาน Como Usar

@@ -1,4 +1,4 @@
-import os, io, csv, smtplib, json, random
+import os, io, json
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify, flash, send_file
 import pandas as pd
 from io import BytesIO
@@ -10,43 +10,59 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import click
 
+# Esta linha carrega as variáveis do seu arquivo .env
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'troquesecreta')
-db_url = os.getenv('DATABASE_URL', 'sqlite:///./instance/estoque.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+
+# Configuração para ler as variáveis de ambiente do arquivo .env
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+# Importa os modelos após a inicialização do 'db'
 from models import (Usuario, Fornecedor, Estoque, Produto, Venda, Categoria, 
                     Endereco, Mensagem, Cliente, Pagamento, ProdutoVenda,
                     PedidoFornecedor, PedidoProduto, MovimentacaoEstoque)
 
+
+# =======================================================================
+# FUNÇÃO DE SETUP ATUALIZADA
+# =======================================================================
 def seed_essentials():
-    if Usuario.query.first():
-        return
-    print("Inserindo dados essenciais (usuários, fornecedores, etc.)...")
+    """
+    Verifica se os usuários essenciais (admin, seller) existem e garante que
+    suas senhas estejam corretamente criptografadas.
+    """
+    print("Verificando e atualizando senhas dos usuários essenciais...")
     
-    u1 = Usuario(login='admin', senha=generate_password_hash('admin'), cargo='GERENTE')
-    u2 = Usuario(login='seller', senha=generate_password_hash('seller'), cargo='VENDEDOR')
-    db.session.add_all([u1, u2])
+    try:
+        admin_user = Usuario.query.filter_by(login='admin').first()
+        if admin_user:
+            admin_user.senha = generate_password_hash('admin')
+            print("Senha do 'admin' atualizada.")
+        else:
+            admin_user = Usuario(login='admin', senha=generate_password_hash('admin'), cargo='GERENTE')
+            db.session.add(admin_user)
+            print("Usuário 'admin' criado.")
 
-    end1 = Endereco(cep='12345-678', numero='100', complemento='Sede')
-    cat1 = Categoria(nome_categoria='Geral')
-    db.session.add_all([end1, cat1]); db.session.flush()
+        seller_user = Usuario.query.filter_by(login='seller').first()
+        if seller_user:
+            seller_user.senha = generate_password_hash('seller')
+            print("Senha do 'seller' atualizada.")
+        else:
+            seller_user = Usuario(login='seller', senha=generate_password_hash('seller'), cargo='VENDEDOR')
+            db.session.add(seller_user)
+            print("Usuário 'seller' criado.")
+            
+        db.session.commit()
+        print("Usuários essenciais verificados/atualizados com sucesso.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO ao atualizar senhas: {e}")
 
-    f1 = Fornecedor(nome='Fornec A', email='fornecA@example.com', cnpj='00.000.000/0001-00', id_endereco=end1.id_endereco)
-    f2 = Fornecedor(nome='Fornec B', email='fornecB@example.com', cnpj='00.000.000/0001-01', id_endereco=end1.id_endereco)
-    db.session.add_all([f1, f2])
-
-    cliente1 = Cliente(nome='Cliente Padrão', cpf='000.000.000-00', id_endereco=end1.id_endereco)
-    pagto1 = Pagamento(tipo='Cartão')
-    db.session.add_all([cliente1, pagto1])
-    
-    db.session.commit()
-    print("Dados essenciais inseridos.")
 
 # --- Rotas ---
 @app.route('/login', methods=['GET','POST'])
@@ -90,25 +106,40 @@ def index():
         return redirect(url_for('login'))
     if session.get('cargo') == 'GERENTE':
         return redirect(url_for('dashboard'))
-    return redirect(url_for('estoque'))
+    return redirect(url_for('vendas'))
 
+# --- ROTA /dashboard CORRIGIDA ---
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session or session.get('cargo') != 'GERENTE':
         return redirect(url_for('login'))
-    noventa_dias_atras = datetime.utcnow() - timedelta(days=90)
-    produtos_vendidos_recentemente = db.session.query(ProdutoVenda.id_produto).join(Venda).filter(
+
+    # Lógica de produtos parados melhorada
+    hoje = datetime.utcnow()
+    noventa_dias_atras = hoje - timedelta(days=90)
+
+    # Subconsulta para encontrar produtos vendidos recentemente
+    subquery_recentes = db.session.query(ProdutoVenda.id_produto).join(Venda).filter(
         Venda.data_compra >= noventa_dias_atras
-    ).distinct()
-    produtos_parados = db.session.query(Produto).filter(
-        not_(Produto.id_produto.in_(produtos_vendidos_recentemente))
-    ).all()
+    ).distinct().subquery()
+
+    # Consulta principal usando LEFT JOIN para encontrar produtos que NÃO estão na subconsulta
+    produtos_parados = db.session.query(Produto).outerjoin(
+        subquery_recentes, Produto.id_produto == subquery_recentes.c.id_produto
+    ).filter(subquery_recentes.c.id_produto == None).all()
+
+    total_vendas = db.session.query(func.sum(Venda.valor_total)).scalar() or 0
+    total_produtos_estoque = db.session.query(func.sum(Estoque.quantidade_produto)).scalar() or 0
+    
     return render_template(
         'dashboard.html', 
         user=session.get('login'),
+        total_vendas=total_vendas,
+        total_produtos_estoque=total_produtos_estoque,
         produtos_parados=produtos_parados
     )
 
+# --- ROTA /estoque CORRIGIDA ---
 @app.route('/estoque')
 def estoque():
     if 'user_id' not in session:
@@ -118,9 +149,12 @@ def estoque():
     if query:
         produtos_query = produtos_query.filter(Produto.nome.ilike(f'%{query}%'))
     produtos = produtos_query.all()
+    
+    # Lógica para produtos com estoque baixo foi reinserida
     produtos_estoque_baixo = db.session.query(Produto).join(Estoque).filter(
         Estoque.quantidade_produto <= 5
     ).all()
+
     return render_template('estoque.html', 
                            produtos=produtos, 
                            cargo=session.get('cargo'), 
@@ -319,52 +353,74 @@ def nova_venda():
     if request.method == 'POST':
         produtos_ids = request.form.getlist('produto_id[]')
         quantidades = request.form.getlist('quantidade[]')
-        if not produtos_ids:
-            flash('Adicione ao menos um produto à venda.', 'warning')
+        
+        if not produtos_ids or not any(q.isdigit() and int(q) > 0 for q in quantidades):
+            flash('Adicione ao menos um produto com quantidade maior que zero.', 'warning')
             return redirect(url_for('nova_venda'))
+
         valor_total_venda = 0
         itens_da_venda = []
+        
         for pid, qty_str in zip(produtos_ids, quantidades):
+            if not (pid and qty_str.isdigit() and int(qty_str) > 0):
+                continue
+            
             qty = int(qty_str)
             produto = Produto.query.get(int(pid))
+            
             if produto.estoque.quantidade_produto < qty:
                 flash(f'Estoque insuficiente para "{produto.nome}". Disponível: {produto.estoque.quantidade_produto}', 'danger')
                 return redirect(url_for('nova_venda'))
+
             preco_a_cobrar = produto.preco_promocional if produto.preco_promocional else produto.preco
             valor_total_venda += float(preco_a_cobrar) * qty
             itens_da_venda.append({'produto': produto, 'quantidade': qty, 'preco_unitario': preco_a_cobrar})
+
         try:
             cliente_padrao = Cliente.query.first()
             pagamento_padrao = Pagamento.query.first()
-            nova_venda_obj = Venda(id_cliente=cliente_padrao.id_cliente, id_pagamento=pagamento_padrao.id_pagamento, valor_total=valor_total_venda)
+            
+            nova_venda_obj = Venda(
+                id_cliente=cliente_padrao.id_cliente, 
+                id_pagamento=pagamento_padrao.id_pagamento, 
+                valor_total=valor_total_venda,
+                data_compra=datetime.utcnow()
+            )
             db.session.add(nova_venda_obj)
             db.session.flush()
+
             for item in itens_da_venda:
                 produto = item['produto']
                 quantidade_vendida = item['quantidade']
-                produto_venda = ProdutoVenda(
+                
+                produto_venda_link = ProdutoVenda(
                     id_venda=nova_venda_obj.id_venda, 
                     id_produto=produto.id_produto, 
                     quantidade=quantidade_vendida,
                     preco_unitario=item['preco_unitario']
                 )
-                db.session.add(produto_venda)
+                db.session.add(produto_venda_link)
+                
                 produto.estoque.quantidade_produto -= quantidade_vendida
-                mov = MovimentacaoEstoque(id_produto=produto.id_produto, id_usuario=session.get('user_id'), tipo='SAÍDA', quantidade=quantidade_vendida, observacao=f'Venda #{nova_venda_obj.id_venda}')
+                
+                mov = MovimentacaoEstoque(
+                    id_produto=produto.id_produto, 
+                    id_usuario=session.get('user_id'), 
+                    tipo='SAÍDA', 
+                    quantidade=quantidade_vendida,
+                    observacao=f'Venda #{nova_venda_obj.id_venda}'
+                )
                 db.session.add(mov)
-                if produto.estoque.quantidade_produto <= 5:
-                    flash(f"Alerta: Estoque baixo para '{produto.nome}'! Restam apenas {produto.estoque.quantidade_produto} unidades.", 'warning')
+
             db.session.commit()
             flash('Venda registrada com sucesso!', 'success')
-            
-            # --- REDIRECIONAMENTO ATUALIZADO AQUI ---
-            # Após a venda, o usuário agora é direcionado para o recibo.
             return redirect(url_for('recibo_venda', id_venda=nova_venda_obj.id_venda))
         
         except Exception as e:
             db.session.rollback()
             flash(f'Ocorreu um erro ao registrar a venda: {e}', 'danger')
             return redirect(url_for('nova_venda'))
+
     produtos = Produto.query.join(Estoque).filter(Estoque.quantidade_produto > 0).order_by(Produto.nome).all()
     return render_template('nova_venda.html', produtos=produtos)
 
@@ -477,13 +533,11 @@ def exportar_vendas():
     if 'user_id' not in session or session.get('cargo') != 'GERENTE':
         flash('Acesso negado.', 'danger')
         return redirect(url_for('vendas'))
-
     try:
         lista_vendas = db.session.query(Venda).options(
             joinedload(Venda.cliente), 
             joinedload(Venda.itens)
         ).order_by(Venda.data_compra.desc()).all()
-
         dados_para_exportar = []
         for venda in lista_vendas:
             dados_para_exportar.append({
@@ -493,101 +547,47 @@ def exportar_vendas():
                 'Nº de Itens': len(venda.itens),
                 'Valor Total (R$)': float(venda.valor_total)
             })
-        
         df = pd.DataFrame(dados_para_exportar)
         output = BytesIO()
-        
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='Historico_Vendas')
-            
             workbook  = writer.book
             worksheet = writer.sheets['Historico_Vendas']
-            
             money_format = workbook.add_format({'num_format': 'R$ #,##0.00'})
-            
             worksheet.set_column('A:A', 12)
             worksheet.set_column('B:B', 30)
             worksheet.set_column('C:C', 12)
             worksheet.set_column('D:D', 12)
             worksheet.set_column('E:E', 20, money_format)
-
         output.seek(0)
-        
         return send_file(
             output, 
             download_name='relatorio_vendas.xlsx', 
             as_attachment=True,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-
     except Exception as e:
         flash(f"Erro ao gerar relatório de vendas: {e}", "danger")
         return redirect(url_for('vendas'))
 
-# --- COMANDO ÚNICO DE SETUP ---
+
+# =======================================================================
+# COMANDO DE SETUP SIMPLIFICADO
+# =======================================================================
 @app.cli.command("setup")
 def setup_command():
-    """Cria o banco de dados, insere dados essenciais e importa produtos do JSON."""
-    print("--- Iniciando Setup Completo ---")
-    print("1. Criando tabelas...")
+    """
+    Garante que as tabelas existam e que os usuários essenciais (admin, seller)
+    tenham suas senhas corretamente criptografadas.
+    """
+    print("--- Iniciando Setup da Aplicação ---")
+    print("1. Garantindo que todas as tabelas existam...")
     db.create_all()
-    print("2. Inserindo dados essenciais...")
+    print("2. Verificando e atualizando senhas dos usuários essenciais...")
     seed_essentials()
-    print("3. Importando produtos do 'estoque.json'...")
-    try:
-        filepath = 'estoque.json'
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        produtos_list = data.values() if isinstance(data, dict) else []
-        cat_cache = {}
-        forn_counter = 0
-        for item in produtos_list:
-            nome = item.get('nome')
-            if not nome: continue
-            cat_nome = item.get('categoria', 'Geral')
-            if cat_nome not in cat_cache:
-                cat = Categoria.query.filter_by(nome_categoria=cat_nome).first()
-                if not cat:
-                    cat = Categoria(nome_categoria=cat_nome)
-                    db.session.add(cat); db.session.flush()
-                cat_cache[cat_nome] = cat
-            forn_name = item.get('fornecedor', 'Fornecedor Padrão')
-            forn = Fornecedor.query.filter_by(nome=forn_name).first()
-            if not forn:
-                end = Endereco.query.filter_by(cep='00000-000', numero='S/N').first()
-                if not end:
-                    end = Endereco(cep='00000-000', numero='S/N')
-                    db.session.add(end); db.session.flush()
-                forn_counter += 1
-                cnpj_padrao = f"00.000.000/0000-{forn_counter:02d}"
-                forn = Fornecedor(nome=forn_name, cnpj=cnpj_padrao, id_endereco=end.id_endereco)
-                db.session.add(forn); db.session.flush()
-            est = Estoque(quantidade_produto=int(item.get('quantidade_estoque', 0)), min_produto=1)
-            db.session.add(est); db.session.flush()
-            p = Produto(nome=nome, descricao=item.get('descricao'), preco=float(item.get('preco', 0.0)), fornecedor_id=forn.id_fornecedor, estoque_id=est.id_estoque, id_categoria=cat_cache[cat_nome].id_categoria)
-            db.session.add(p)
-        db.session.commit()
-        print("   Produtos importados com sucesso.")
-    except FileNotFoundError:
-        print("   AVISO: Arquivo 'estoque.json' não encontrado. Nenhum produto foi importado.")
-    except Exception as e:
-        print(f"   ERRO ao importar produtos: {e}")
-        db.session.rollback()
-    
-    if not Venda.query.first():
-        print("4. Criando simulação de vendas...")
-        produtos = Produto.query.all()
-        if produtos:
-            hoje = datetime.utcnow()
-            for i in range(365):
-                data_venda = hoje - timedelta(days=i)
-                for _ in range(random.randint(0, 2)):
-                    produto_vendido = random.choice(produtos)
-                    valor = float(produto_vendido.preco) * random.randint(1, 3)
-                    nova_venda = Venda(data_compra=data_venda, valor_total=valor, id_cliente=Cliente.query.first().id_cliente, id_pagamento=Pagamento.query.first().id_pagamento)
-                    db.session.add(nova_venda)
-            db.session.commit()
-    print("--- Setup Concluído com Sucesso! ---")
+    print("\n--- Setup da Aplicação Concluído! ---")
+    print("O banco de dados principal deve ser populado via script SQL.")
+    print("Este comando apenas garante as senhas corretas para login.")
 
 
 # --- Inicialização ---
