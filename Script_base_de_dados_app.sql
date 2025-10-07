@@ -1,19 +1,10 @@
 -- =======================================================================
--- SCRIPT DE CRIAÇÃO E POPULAÇÃO DO BANCO DE DADOS - RYTEKSHOP (VERSÃO SUPER EXPANDIDA)
--- Contém mais de 200 inserções de dados para uma simulação robusta.
+-- SCRIPT DE CRIAÇÃO E POPULAÇÃO DO BANCO DE DADOS - RYTEKSHOP (VERSÃO FINAL)
 -- =======================================================================
 
--- Apaga o banco de dados se ele já existir, para garantir uma execução limpa.
 DROP DATABASE IF EXISTS RYTEKSHOP;
-
--- Cria o banco de dados com as configurações de caracteres recomendadas.
-CREATE DATABASE RYTEKSHOP 
-CHARACTER SET utf8mb4 
-COLLATE utf8mb4_unicode_ci;
-
--- Seleciona o banco de dados para executar os comandos seguintes.
+CREATE DATABASE RYTEKSHOP CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE RYTEKSHOP;
-
 
 -- =======================================================================
 -- DDL - CRIAÇÃO DA ESTRUTURA DE TABELAS
@@ -22,7 +13,7 @@ USE RYTEKSHOP;
 CREATE TABLE ENDERECO (
     id_endereco INT AUTO_INCREMENT PRIMARY KEY,
     cep VARCHAR(10) NOT NULL,
-    numero VARCHAR(8) NOT NULL,
+    numero VARCHAR(20) NOT NULL, -- Corrigido: Aumentado para 20
     complemento VARCHAR(100)
 );
 
@@ -58,6 +49,7 @@ CREATE TABLE CLIENTE (
     id_cliente INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     cpf VARCHAR(14) NOT NULL UNIQUE,
+    telefone VARCHAR(20) NULL, -- Corrigido: Campo de telefone adicionado
     id_endereco INT NOT NULL,
     FOREIGN KEY (id_endereco) REFERENCES ENDERECO(id_endereco)
 );
@@ -144,9 +136,8 @@ CREATE TABLE MOVIMENTACAO_ESTOQUE (
 );
 
 -- =======================================================================
--- DML - INSERÇÃO DE DADOS INICIAIS
+-- DML - INSERÇÃO DE DADOS (VERSÃO EXPANDIDA)
 -- =======================================================================
-
 INSERT INTO ENDERECO (cep, numero, complemento) VALUES
 ('06705-150', '123', 'Apto 101'), ('22041-011', '456', 'Bloco B'),
 ('50030-000', '789', 'Sede'), ('70390-095', '10', 'Loja 02'),
@@ -158,12 +149,8 @@ INSERT INTO CONTA (login, senha, cargo) VALUES
 ('ana.gerente', 'placeholder_hash', 'GERENTE'), ('bruno.vendedor', 'placeholder_hash', 'VENDEDOR'),
 ('carla.estoque', 'placeholder_hash', 'VENDEDOR');
 
-INSERT INTO CATEGORIA (nome_categoria) VALUES
-('Periféricos'), ('Monitores'), ('Hardware'), ('Games'), ('Acessórios'), ('Notebooks');
-
-INSERT INTO PAGAMENTO (tipo, parcela) VALUES
-('Cartão de Crédito', 1), ('Cartão de Débito', 1), ('PIX', 1),
-('Boleto Bancário', 1), ('Dinheiro', 1);
+INSERT INTO CATEGORIA (nome_categoria) VALUES ('Periféricos'), ('Monitores'), ('Hardware'), ('Games'), ('Acessórios'), ('Notebooks');
+INSERT INTO PAGAMENTO (tipo, parcela) VALUES ('Cartão de Crédito', 1), ('Cartão de Débito', 1), ('PIX', 1), ('Boleto Bancário', 1), ('Dinheiro', 1);
 
 INSERT INTO FORNECEDOR (nome, email, cnpj, telefone, id_endereco) VALUES
 ('PC Componentes S.A.', 'contato@pccomponentes.com', '11.222.333/0001-44', '(11) 2345-6789', 3),
@@ -172,11 +159,12 @@ INSERT INTO FORNECEDOR (nome, email, cnpj, telefone, id_endereco) VALUES
 ('Office Solutions', 'suporte@officesolutions.com', '44.555.666/0001-77', '(51) 1234-9876', 5),
 ('Import Tech', 'contato@importtech.com', '55.666.777/0001-88', '(11) 5555-7777', 1);
 
-INSERT INTO CLIENTE (nome, cpf, id_endereco) VALUES
-('Ana Silva', '111.222.333-44', 1), ('Bruno Costa', '222.333.444-55', 2),
-('Carla Dias', '333.444.555-66', 3), ('Daniel Fogaça', '444.555.666-77', 4),
-('Eduarda Matos', '555.666.777-88', 5), ('Fernanda Lima', '666.777.888-99', 6),
-('Guilherme Souza', '777.888.999-00', 7);
+-- Corrigido: Adicionando telefones aos clientes
+INSERT INTO CLIENTE (nome, cpf, telefone, id_endereco) VALUES
+('Ana Silva', '11122233344', '(11) 98765-4321', 1), ('Bruno Costa', '22233344455', '(21) 91234-5678', 2),
+('Carla Dias', '33344455566', '(31) 95555-8888', 3), ('Daniel Fogaça', '44455566677', '(41) 98877-1234', 4),
+('Eduarda Matos', '55566677788', '(51) 99999-0000', 5), ('Fernanda Lima', '66677788899', '(11) 98888-1111', 6),
+('Guilherme Souza', '77788899900', '(21) 97777-2222', 7);
 
 INSERT INTO ESTOQUE (quantidade_produto, min_produto) VALUES
 (50, 5), (75, 10), (20, 3), (40, 5), (100, 10), (200, 20), (30, 5), (15, 2), (250, 25), (60, 10),
@@ -198,6 +186,9 @@ INSERT INTO PRODUTO (nome, descricao, preco, id_categoria, fornecedor_id, estoqu
 ('Grand Theft Auto V (PC)', 'Edição Premium Online.', 89.90, 4, 3, 13),
 ('Filtro de Linha Clamper', '8 tomadas com proteção contra surtos.', 129.90, 5, 4, 14),
 ('Gabinete Gamer Full Tower', 'Gabinete espaçoso com painel de vidro e 4 fans RGB.', 750.00, 3, 5, 15);
+
+-- (O restante das inserções de VENDAS, PEDIDOS, etc. continua o mesmo)
+-- ...
 
 -- == DADOS DE PEDIDOS E MENSAGENS ==
 INSERT INTO PEDIDO_FORNECEDOR (id_fornecedor, data_pedido, status) VALUES 

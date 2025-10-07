@@ -25,15 +25,11 @@
                         
                         {% if session.get('cargo') in ['GERENTE', 'VENDEDOR'] %}
                         <li><a class="dropdown-item" href="{{ url_for('nova_venda') }}"><i class="bi bi-cart-plus-fill me-2"></i> Registrar Venda</a></li>
-                        
-                        {# --- NOVO LINK PARA VENDAS ADICIONADO AQUI --- #}
                         <li><a class="dropdown-item" href="{{ url_for('vendas') }}"><i class="bi bi-cash-stack me-2"></i> Vendas</a></li>
-                        
                         <li><a class="dropdown-item" href="{{ url_for('pedidos') }}"><i class="bi bi-truck me-2"></i> Pedidos</a></li>
                         {% endif %}
 
                         {% if session.get('cargo') == 'GERENTE' %}
-                        {# --- LINK RENOMEADO DE 'Histórico' PARA 'Movimentações' --- #}
                         <li><a class="dropdown-item" href="{{ url_for('historico') }}"><i class="bi bi-clock-history me-2"></i> Movimentações</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('mensagens') }}"><i class="bi bi-envelope-fill me-2"></i> Mensagens</a></li>
                         {% endif %}
@@ -51,5 +47,10 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {# --- BLOCO ADICIONADO AQUI --- #}
+    {# Este bloco permite que páginas filhas (como nova_venda.html) insiram seus próprios scripts. #}
+    {% block scripts %}{% endblock %}
+
 </body>
 </html>

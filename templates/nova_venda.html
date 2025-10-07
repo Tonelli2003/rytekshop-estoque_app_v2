@@ -1,74 +1,225 @@
 {% extends "base.html" %}
 {% block title %}Registrar Nova Venda{% endblock %}
+
 {% block content %}
-    <h1 class="mb-4">Registrar Nova Venda</h1>
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('vendas') }}" class="btn btn-outline-secondary me-3"><i class="bi bi-arrow-left"></i> Voltar</a>
+    <h1 class="h2 mb-0">Registrar Nova Venda</h1>
+</div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="card bg-dark">
+<form method="POST" id="form-venda">
+    <div class="card bg-dark mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">1. Cliente</h5>
+        </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('nova_venda') }}">
-                <h5 class="mb-3">Itens da Venda</h5>
-                <div id="itens-container">
-                    </div>
-                <button type="button" id="add-item-btn" class="btn btn-secondary mt-2">
-                    <i class="bi bi-plus-lg"></i> Adicionar Item
+            <div class="row g-3">
+                <div class="col-md-10">
+                    <label for="input-pesquisa-cliente" class="form-label">Pesquisar Cliente por CPF ou Nome</label>
+                    <input type="text" class="form-control" id="input-pesquisa-cliente" placeholder="Digite o CPF ou o nome do cliente" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary w-100 mt-4" id="btn-pesquisar-cliente">Pesquisar</button>
+                </div>
+            </div>
+            
+            <div id="area-resultados" class="mt-3">
+                </div>
+
+            <div class="text-center mt-3 border-top pt-3 border-secondary">
+                <p class="text-white-50 mb-1">Não encontrou o cliente?</p>
+                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalNovoCliente">
+                    <i class="bi bi-person-plus-fill me-1"></i> Cadastrar Novo Cliente
                 </button>
-                <hr>
-                <a href="{{ url_for('estoque') }}" class="btn btn-outline-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-success">Finalizar Venda</button>
-            </form>
+            </div>
+            <input type="hidden" name="id_cliente_selecionado" id="id_cliente_selecionado">
         </div>
     </div>
 
-    <template id="item-template">
-        <div class="row item-row mb-2">
-            <div class="col-md-7">
-                <select class="form-select" name="produto_id[]" required>
-                    <option value="">-- Selecione um produto (Estoque disponível) --</option>
-                    {% for p in produtos %}
-                    <option value="{{ p.id_produto }}">{{ p.nome }} ({{ p.estoque.quantidade_produto }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-3">
-                <input type="number" class="form-control" name="quantidade[]" placeholder="Quantidade" min="1" required>
-            </div>
-            <div class="col-md-2">
-                <button type="button" class="btn btn-danger w-100 remove-item-btn">Remover</button>
+    <div class="card bg-dark">
+        <div class="card-header"><h5 class="mb-0">2. Produtos</h5></div>
+        <div class="card-body">
+            <div id="lista-produtos"></div>
+            <div class="d-flex justify-content-between mt-3">
+                <button type="button" class="btn btn-secondary" id="add-produto-btn"><i class="bi bi-plus-circle"></i> Adicionar Produto</button>
+                <button type="submit" class="btn btn-success btn-lg" id="finalizar-venda-btn" disabled><i class="bi bi-check-lg"></i> Finalizar Venda</button>
             </div>
         </div>
-    </template>
+    </div>
+</form>
 
+<template id="produto-template">
+    <div class="row g-3 mb-3 align-items-center produto-row">
+        <div class="col-md-6"><select name="produto_id[]" class="form-select produto-select"><option selected disabled value="">Selecione um produto...</option>{% for produto in produtos %}<option value="{{ produto.id_produto }}" data-preco="{{ produto.preco_promocional or produto.preco }}">{{ produto.nome }} (Estoque: {{ produto.estoque.quantidade_produto }}) - R$ {{ "%.2f"|format(produto.preco_promocional or produto.preco) }}</option>{% endfor %}</select></div>
+        <div class="col-md-2"><input type="number" name="quantidade[]" class="form-control quantidade-input" placeholder="Qtd" min="1" value="1"></div>
+        <div class="col-md-3"><div class="form-control-plaintext text-end fs-5 subtotal">R$ 0.00</div></div>
+        <div class="col-md-1"><button type="button" class="btn btn-danger remove-produto-btn"><i class="bi bi-trash-fill"></i></button></div>
+    </div>
+</template>
+
+<div class="modal fade" id="modalNovoCliente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header"><h5 class="modal-title">Cadastrar Novo Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body">
+                <form id="form-novo-cliente">
+                    <div class="mb-3"><label for="novo-cliente-nome" class="form-label">Nome Completo</label><input type="text" class="form-control" id="novo-cliente-nome" required></div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="novo-cliente-cpf" class="form-label">CPF</label><input type="text" class="form-control" id="novo-cliente-cpf" required placeholder="Apenas números"></div>
+                        <div class="col-md-6 mb-3"><label for="novo-cliente-telefone" class="form-label">Telefone</label><input type="text" class="form-control" id="novo-cliente-telefone" placeholder="(11) 99999-9999"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8"><label for="novo-cliente-cep" class="form-label">CEP</label><input type="text" class="form-control" id="novo-cliente-cep"></div>
+                        <div class="col-md-4"><label for="novo-cliente-numero" class="form-label">Número</label><input type="text" class="form-control" id="novo-cliente-numero"></div>
+                    </div>
+                    <div id="modal-alert-placeholder" class="mt-3"></div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btn-salvar-cliente">Salvar Cliente</button></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const addItemBtn = document.getElementById('add-item-btn');
-    const itemsContainer = document.getElementById('itens-container');
-    const itemTemplate = document.getElementById('item-template');
+document.addEventListener('DOMContentLoaded', function () {
+    const btnPesquisarCliente = document.getElementById('btn-pesquisar-cliente');
+    const inputPesquisaCliente = document.getElementById('input-pesquisa-cliente');
+    const areaResultados = document.getElementById('area-resultados');
+    const hiddenClienteIdInput = document.getElementById('id_cliente_selecionado');
+    const finalizarVendaBtn = document.getElementById('finalizar-venda-btn');
 
-    function addNewItem() {
-        const newItemRow = itemTemplate.content.cloneNode(true);
-        itemsContainer.appendChild(newItemRow);
+    function selecionarCliente(cliente) {
+        areaResultados.innerHTML = `
+            <div class="alert alert-success">
+                <strong class="d-block">Cliente Selecionado:</strong>
+                <span class="fs-5">${cliente.nome}</span> | <span class="text-white-50">CPF: ${cliente.cpf}</span>
+            </div>
+        `;
+        hiddenClienteIdInput.value = cliente.id_cliente;
+        finalizarVendaBtn.disabled = false;
+    }
+    
+    function exibirResultados(clientes) {
+        if (clientes.length === 0) {
+            areaResultados.innerHTML = `<div class="alert alert-warning">Nenhum cliente encontrado. Tente novamente ou cadastre um novo.</div>`;
+            finalizarVendaBtn.disabled = true;
+            hiddenClienteIdInput.value = '';
+            return;
+        }
+        
+        if (clientes.length === 1) {
+            selecionarCliente(clientes[0]);
+            return;
+        }
+
+        let htmlResultados = '<p>Múltiplos resultados encontrados. Selecione o cliente correto:</p>';
+        htmlResultados += '<div class="list-group">';
+        clientes.forEach(cliente => {
+            htmlResultados += `
+                <button type="button" class="list-group-item list-group-item-action list-group-item-dark" 
+                        data-id="${cliente.id_cliente}" data-nome="${cliente.nome}" data-cpf="${cliente.cpf}">
+                    <strong>${cliente.nome}</strong> (CPF: ${cliente.cpf})
+                </button>
+            `;
+        });
+        htmlResultados += '</div>';
+        areaResultados.innerHTML = htmlResultados;
     }
 
-    addItemBtn.addEventListener('click', addNewItem);
+    async function pesquisar() {
+        const query = inputPesquisaCliente.value.trim();
+        if (!query) {
+            areaResultados.innerHTML = '<div class="alert alert-danger">Por favor, digite um CPF ou nome.</div>';
+            return;
+        }
+        areaResultados.innerHTML = '<div class="text-white-50">Pesquisando...</div>';
 
-    itemsContainer.addEventListener('click', (e) => {
-        if (e.target && e.target.classList.contains('remove-item-btn')) {
-            e.target.closest('.item-row').remove();
+        try {
+            const response = await fetch(`/api/clientes/pesquisar?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            exibirResultados(data);
+        } catch (error) {
+            areaResultados.innerHTML = '<div class="alert alert-danger">Erro de conexão.</div>';
+        }
+    }
+
+    btnPesquisarCliente.addEventListener('click', pesquisar);
+    inputPesquisaCliente.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            pesquisar();
+        }
+    });
+    
+    areaResultados.addEventListener('click', function(e) {
+        if (e.target.matches('.list-group-item')) {
+            const cliente = {
+                id_cliente: e.target.dataset.id,
+                nome: e.target.dataset.nome,
+                cpf: e.target.dataset.cpf
+            };
+            selecionarCliente(cliente);
         }
     });
 
-    addNewItem(); // Adiciona a primeira linha ao carregar
+    const modalNovoCliente = new bootstrap.Modal(document.getElementById('modalNovoCliente'));
+    const btnSalvarCliente = document.getElementById('btn-salvar-cliente');
+
+    btnSalvarCliente.addEventListener('click', async function () {
+        const nome = document.getElementById('novo-cliente-nome').value;
+        const cpf = document.getElementById('novo-cliente-cpf').value;
+        const telefone = document.getElementById('novo-cliente-telefone').value;
+        const cep = document.getElementById('novo-cliente-cep').value;
+        const numero = document.getElementById('novo-cliente-numero').value;
+        const alertPlaceholder = document.getElementById('modal-alert-placeholder');
+        alertPlaceholder.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/cliente/novo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, cpf, telefone, cep, numero })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                selecionarCliente(data);
+                modalNovoCliente.hide();
+                document.getElementById('form-novo-cliente').reset();
+            } else {
+                alertPlaceholder.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            }
+        } catch (error) {
+            alertPlaceholder.innerHTML = `<div class="alert alert-danger">Erro de conexão ao salvar.</div>`;
+        }
+    });
+    
+    const listaProdutosDiv = document.getElementById('lista-produtos');
+    const addProdutoBtn = document.getElementById('add-produto-btn');
+    const template = document.getElementById('produto-template');
+    function addProdutoRow() {
+        const clone = template.content.cloneNode(true);
+        listaProdutosDiv.appendChild(clone);
+    }
+    listaProdutosDiv.addEventListener('click', function(e) { if (e.target.closest('.remove-produto-btn')) { e.target.closest('.produto-row').remove(); } });
+    listaProdutosDiv.addEventListener('input', function(e) {
+        if (e.target.matches('.produto-select, .quantidade-input')) {
+            const row = e.target.closest('.produto-row');
+            const select = row.querySelector('.produto-select');
+            const quantidade = row.querySelector('.quantidade-input').value;
+            const subtotalDiv = row.querySelector('.subtotal');
+            const selectedOption = select.options[select.selectedIndex];
+            const preco = selectedOption.dataset.preco;
+            if (preco && quantidade > 0) {
+                subtotalDiv.textContent = `R$ ${(parseFloat(preco) * parseInt(quantidade)).toFixed(2)}`;
+            } else {
+                subtotalDiv.textContent = 'R$ 0.00';
+            }
+        }
+    });
+    addProdutoBtn.addEventListener('click', addProdutoRow);
+    addProdutoRow();
 });
 </script>
 {% endblock %}

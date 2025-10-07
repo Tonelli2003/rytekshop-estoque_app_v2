@@ -10,12 +10,12 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import click
 
-# Esta linha carrega as variáveis do seu arquivo .env
+# Carrega as variáveis do arquivo .env
 load_dotenv()
 
 app = Flask(__name__)
 
-# Configuração para ler as variáveis de ambiente do arquivo .env
+# Configuração para ler as variáveis de ambiente
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -29,15 +29,30 @@ from models import (Usuario, Fornecedor, Estoque, Produto, Venda, Categoria,
 
 
 # =======================================================================
-# FUNÇÃO DE SETUP ATUALIZADA
+# FUNÇÕES AUXILIARES
 # =======================================================================
+
+def valida_cpf(cpf: str) -> bool:
+    """Valida um CPF brasileiro."""
+    cpf = ''.join(filter(str.isdigit, cpf))
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    soma = sum(int(cpf[i]) * (10 - i) for i in range(9))
+    resto = (soma * 10) % 11
+    if resto == 10: resto = 0
+    if resto != int(cpf[9]): return False
+    soma = sum(int(cpf[i]) * (11 - i) for i in range(10))
+    resto = (soma * 10) % 11
+    if resto == 10: resto = 0
+    if resto != int(cpf[10]): return False
+    return True
+
 def seed_essentials():
     """
     Verifica se os usuários essenciais (admin, seller) existem e garante que
     suas senhas estejam corretamente criptografadas.
     """
     print("Verificando e atualizando senhas dos usuários essenciais...")
-    
     try:
         admin_user = Usuario.query.filter_by(login='admin').first()
         if admin_user:
@@ -108,22 +123,16 @@ def index():
         return redirect(url_for('dashboard'))
     return redirect(url_for('vendas'))
 
-# --- ROTA /dashboard CORRIGIDA ---
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session or session.get('cargo') != 'GERENTE':
         return redirect(url_for('login'))
 
-    # Lógica de produtos parados melhorada
     hoje = datetime.utcnow()
     noventa_dias_atras = hoje - timedelta(days=90)
-
-    # Subconsulta para encontrar produtos vendidos recentemente
     subquery_recentes = db.session.query(ProdutoVenda.id_produto).join(Venda).filter(
         Venda.data_compra >= noventa_dias_atras
     ).distinct().subquery()
-
-    # Consulta principal usando LEFT JOIN para encontrar produtos que NÃO estão na subconsulta
     produtos_parados = db.session.query(Produto).outerjoin(
         subquery_recentes, Produto.id_produto == subquery_recentes.c.id_produto
     ).filter(subquery_recentes.c.id_produto == None).all()
@@ -139,7 +148,6 @@ def dashboard():
         produtos_parados=produtos_parados
     )
 
-# --- ROTA /estoque CORRIGIDA ---
 @app.route('/estoque')
 def estoque():
     if 'user_id' not in session:
@@ -150,7 +158,6 @@ def estoque():
         produtos_query = produtos_query.filter(Produto.nome.ilike(f'%{query}%'))
     produtos = produtos_query.all()
     
-    # Lógica para produtos com estoque baixo foi reinserida
     produtos_estoque_baixo = db.session.query(Produto).join(Estoque).filter(
         Estoque.quantidade_produto <= 5
     ).all()
@@ -351,10 +358,15 @@ def nova_venda():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     if request.method == 'POST':
+        id_cliente_selecionado = request.form.get('id_cliente_selecionado')
+        if not id_cliente_selecionado:
+            flash('Nenhum cliente selecionado. Por favor, pesquise por CPF/Nome ou cadastre um novo cliente.', 'danger')
+            return redirect(url_for('nova_venda'))
+
         produtos_ids = request.form.getlist('produto_id[]')
         quantidades = request.form.getlist('quantidade[]')
         
-        if not produtos_ids or not any(q.isdigit() and int(q) > 0 for q in quantidades):
+        if not produtos_ids or not any(q and q.isdigit() and int(q) > 0 for q in quantidades):
             flash('Adicione ao menos um produto com quantidade maior que zero.', 'warning')
             return redirect(url_for('nova_venda'))
 
@@ -362,7 +374,7 @@ def nova_venda():
         itens_da_venda = []
         
         for pid, qty_str in zip(produtos_ids, quantidades):
-            if not (pid and qty_str.isdigit() and int(qty_str) > 0):
+            if not (pid and qty_str and qty_str.isdigit() and int(qty_str) > 0):
                 continue
             
             qty = int(qty_str)
@@ -377,11 +389,10 @@ def nova_venda():
             itens_da_venda.append({'produto': produto, 'quantidade': qty, 'preco_unitario': preco_a_cobrar})
 
         try:
-            cliente_padrao = Cliente.query.first()
             pagamento_padrao = Pagamento.query.first()
             
             nova_venda_obj = Venda(
-                id_cliente=cliente_padrao.id_cliente, 
+                id_cliente=id_cliente_selecionado, 
                 id_pagamento=pagamento_padrao.id_pagamento, 
                 valor_total=valor_total_venda,
                 data_compra=datetime.utcnow()
@@ -426,7 +437,7 @@ def nova_venda():
 
 @app.route('/historico')
 def historico():
-    if 'user_id' not in session or session.get('cargo') != 'GERENTE':
+    if 'user_id' not in session:
         return redirect(url_for('login'))
     movimentacoes = MovimentacaoEstoque.query.order_by(MovimentacaoEstoque.data_movimentacao.desc()).all()
     return render_template('historico.html', movimentacoes=movimentacoes)
@@ -464,8 +475,9 @@ def vendas_por_mes():
     totais = [0.0] * 12
     vendas_no_ano = db.session.query(Venda).filter(db.extract('year', Venda.data_compra) == ano).all()
     for v in vendas_no_ano:
-        mes = v.data_compra.month - 1
-        totais[mes] += float(v.valor_total or 0.0)
+        if v.data_compra:
+            mes = v.data_compra.month - 1
+            totais[mes] += float(v.valor_total or 0.0)
     return jsonify({"ano": ano, "mensal": totais})
 
 @app.route('/api/relatorios/estoque_atual')
@@ -476,6 +488,46 @@ def estoque_atual():
     labels = [p.nome for p in produtos]
     data = [p.estoque.quantidade_produto for p in produtos]
     return jsonify({'labels': labels, 'data': data})
+
+@app.route('/api/cliente/cpf/<string:cpf>')
+def api_buscar_cliente_por_cpf(cpf):
+    """Busca um cliente pelo CPF (limpo) e retorna em JSON."""
+    cpf_limpo = ''.join(filter(str.isdigit, cpf))
+    if not valida_cpf(cpf_limpo):
+        return jsonify({'error': 'CPF inválido'}), 400
+    cliente = Cliente.query.filter_by(cpf=cpf_limpo).first()
+    if cliente:
+        return jsonify({'id_cliente': cliente.id_cliente, 'nome': cliente.nome, 'cpf': cliente.cpf})
+    else:
+        return jsonify({'error': 'Cliente não encontrado'}), 404
+
+@app.route('/api/cliente/novo', methods=['POST'])
+def api_cadastrar_cliente():
+    """Cadastra um novo cliente e retorna em JSON."""
+    data = request.json
+    nome = data.get('nome')
+    cpf = data.get('cpf')
+    telefone = data.get('telefone')
+    cep = data.get('cep')
+    numero = data.get('numero')
+    if not nome or not cpf:
+        return jsonify({'error': 'Nome e CPF são obrigatórios'}), 400
+    cpf_limpo = ''.join(filter(str.isdigit, cpf))
+    if not valida_cpf(cpf_limpo):
+        return jsonify({'error': 'CPF com formato inválido'}), 400
+    if Cliente.query.filter_by(cpf=cpf_limpo).first():
+        return jsonify({'error': 'CPF já cadastrado'}), 409
+    try:
+        novo_endereco = Endereco(cep=cep or 'N/A', numero=numero or 'S/N')
+        db.session.add(novo_endereco)
+        db.session.flush()
+        novo_cliente = Cliente(nome=nome, cpf=cpf_limpo, telefone=telefone, id_endereco=novo_endereco.id_endereco)
+        db.session.add(novo_cliente)
+        db.session.commit()
+        return jsonify({'id_cliente': novo_cliente.id_cliente, 'nome': novo_cliente.nome, 'cpf': novo_cliente.cpf}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao salvar no banco: {str(e)}'}), 500
 
 # --- ROTAS DE EXPORTAÇÃO DE RELATÓRIOS ---
 @app.route('/export/produtos')
